@@ -1,0 +1,344 @@
+
+//Программа поиска среднего диаметра в неориентированном графе
+scp_program -> proc_run_testcase (*
+	
+	-> rrel_params: ... (*
+
+		//Узел, содержащий исходный граф
+		-> rrel_1: rrel_in: _graph;;
+
+		//Номер теста (sc-ссылка)
+		-> rrel_2: rrel_in: _test_number;;
+
+	*);;
+
+	-> rrel_operators: ... (*
+
+	//Начальный оператор (выводит строку ----------Тест )
+	//Переход к оператору вывода номера теста
+	-> rrel_init: ..proc_SrD_start (*
+		<- print;;
+		-> rrel_1: rrel_fixed: rrel_scp_const: [----------Тест ];; 		
+		=> nrel_goto: ..proc_SrD_print_test_numbers;;	
+	*);;
+
+	//Оператор вывода номера теста
+	//Переход к оператору занесения всех вершин во множество _all_begin_vertices
+	-> ..proc_SrD_print_test_numbers (*
+		<- printNl;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: _test_number;; 		
+		=> nrel_goto: ..proc_all_path_length_initialize;;	
+	*);;
+
+	-> ..proc_all_path_length_initialize (*
+			<- varAssign;;
+			-> rrel_1: rrel_assign: rrel_scp_var: _all_path_length;;
+			-> rrel_2: rrel_fixed: rrel_scp_const: [0];;
+			=> nrel_goto: ..proc_SrD_get_all_begin_vertices;;
+	*);;
+		
+	//Оператор поиска всех начальных вершин (множество содержит все начальные вершины путей)
+	//В случае, если не будет найдено ни одной вершины, выходим из программы (может произойти в случае, если граф не имеет вершин)
+	//Если найдено множество, то переходим к следующему пункту (получение начальной вершины)
+	-> ..proc_SrD_get_all_begin_vertices (*
+		 <- searchSetStr5;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: _graph;;
+		-> rrel_2: rrel_assign: rrel_pos_const_perm: rrel_scp_var: _arc1;;
+		-> rrel_3: rrel_assign: rrel_scp_var: _vertex_of_graph;;
+		-> rrel_4: rrel_assign: rrel_pos_const_perm: rrel_scp_var: _arc2;;
+		-> rrel_5: rrel_fixed: rrel_scp_const: rrel_vertex;;
+		->rrel_set_3: rrel_assign: rrel_scp_var: _all_begin_vertices;;
+		
+		=> nrel_then: ..proc_SrD_get_begin_vertex;;		
+		=> nrel_else: ..proc_SrD_return;;	
+	*);;
+
+	//--------------------------------------Начало внешнего цикла----------------------------------------
+
+	//Оператор поиска первой вершины _begin
+	//Если найдена вершина переходим к поиску второй вершины, которая будет концом пути (при этом начальная вершина не должна совпадать с конечной)
+	//При этом удалим вершину _begin из множества _all_begin_vertices
+	//Если не будет найдено начальной вершины, то очищаем память и продолжаем выполнение алгоритма (ветвь else, см. ниже)
+	-> ..proc_SrD_get_begin_vertex (*
+		<- searchElStr3;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: _all_begin_vertices;;
+		-> rrel_2: rrel_assign: rrel_scp_var: _deleted_arc;;
+		-> rrel_3: rrel_assign: rrel_scp_var: _begin_vertex;;
+		=> nrel_then: ..proc_SrD_delete_begin_vertex;;
+		=> nrel_else: ..proc_SrD_erase_all_begin_vertices;;
+	*);;
+
+	//--------------------------------------Ветвь then внешнего цикла----------------------------------------
+
+	//Удаление начальной вершины из множества всех вершин путем удаления дуги, связывающей множество вершин и данную вершину (_deleted_arc)
+	//После этого переходим к созданию множества всех конечных вершин (это множетсво будет создаваться каждый раз, когда выбирается новая начальная вершина)
+	-> ..proc_SrD_delete_begin_vertex (*
+		<- eraseEl;;
+		-> rrel_1: rrel_fixed: rrel_erase: rrel_scp_var: _deleted_arc;;
+		
+		=> nrel_goto: ..proc_SrD_create_set_all_end_vertices;;	
+	*);;
+
+	//Оператор поиска всех конечных вершин в графе
+	//В случае, если не будет найдено ни одной вершины, выходим из программы (условие недостижимо)
+	//Если найдено множество, то переходим к следующему пункту удаление _begin из этого множества
+	-> ..proc_SrD_create_set_all_end_vertices (*
+		 <- searchSetStr5;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: _graph;;
+		-> rrel_2: rrel_assign: rrel_pos_const_perm: rrel_scp_var: _arc1;;
+		-> rrel_3: rrel_assign: rrel_scp_var: _vertex_of_graph;;
+		-> rrel_4: rrel_assign: rrel_pos_const_perm: rrel_scp_var: _arc2;;
+		-> rrel_5: rrel_fixed: rrel_scp_const: rrel_vertex;;
+		->rrel_set_3: rrel_assign: rrel_scp_var: _all_end_vertices;;
+		=> nrel_then: ..proc_SrD_find_begin_vertex_in_all_end_vertices;;		
+		=> nrel_else: ..proc_SrD_erase_all_begin_vertices;;	
+	*);;
+
+	//Оператор поиска _begin в _all_end_vertices
+	//Случай, когда дуга не будет найдена невозможен
+	-> ..proc_SrD_find_begin_vertex_in_all_end_vertices (*
+		<- searchElStr3;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: _all_end_vertices;;
+		-> rrel_2: rrel_assign: rrel_scp_var: _deleted_arc;;
+		-> rrel_3: rrel_fixed: rrel_scp_var: _begin_vertex;;
+		=> nrel_then: ..proc_SrD_delete_begin_vertex_in_all_end_vertices;;
+		=> nrel_else: ..proc_SrD_erase_all_begin_vertices;;
+	*);;
+
+	//Удаление _begin из _all_end_vertices
+	//Переход к поиску конечной вершины (вход во внутренний цикл)
+	-> ..proc_SrD_delete_begin_vertex_in_all_end_vertices (*
+		<- eraseEl;;
+		-> rrel_1: rrel_fixed: rrel_erase: rrel_scp_var: _deleted_arc;;
+		=> nrel_goto: ..proc_SrD_find_end_vertex;;	
+	*);;
+
+	//----------------------------------Внутренний цикл--------------------------------------
+
+	//Оператор нахождения конечной вершины
+	//Если вершина найдена, то переходим к удалению этой вершины из множества _all_end_vertices
+	//Если вершина не найдена, то переходим к выбору следующей начальной вершины (но сначала очистим память от _all_end_vertices)
+	-> ..proc_SrD_find_end_vertex (*
+		<- searchElStr3;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: _all_end_vertices;;
+		-> rrel_2: rrel_assign: rrel_scp_var: rrel_pos_const_perm: _deleted_arc;;
+		-> rrel_3: rrel_assign: rrel_scp_var: _end_vertex;;
+		=> nrel_then: ..proc_SrD_delete_end_vertex_in_all_end_vertex;;
+		=> nrel_else: ..proc_SrD_erase_all_end_vertices;;
+	*);;
+
+	//Удаление множества всех конечных вершин
+	//Переход к оператору нахождения следующей начальной вершины вершины
+	-> ..proc_SrD_erase_all_end_vertices (*
+		<- eraseEl;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: rrel_erase: _all_end_vertices;;
+		=> nrel_goto: ..proc_SrD_get_begin_vertex;;
+	*);;
+
+	//Оператор удаления дуги между начальной вершиной и множеством всех вершин
+	//После этого переходим к созданию множества непроверенных вершин
+	-> ..proc_SrD_delete_end_vertex_in_all_end_vertex (*
+		<- eraseEl;;
+		-> rrel_1: rrel_fixed: rrel_erase: rrel_scp_var: _deleted_arc;;
+		=> nrel_goto: ..proc_SrD_call_FIND_SRD;;	
+	*);;
+
+	//Оператор вызова программы, которая ищет путь (и его длину) между вершинами _begin_vertex и _end_vertex
+	//После этого переходим к оператору ожидания
+	-> ..proc_SrD_call_FIND_SRD (*
+			<- call;;
+			-> rrel_1: rrel_fixed: rrel_scp_const: proc_find_min_path;;
+			-> rrel_2: rrel_fixed: rrel_scp_const: ... (*
+				-> rrel_1: rrel_fixed: rrel_scp_var: _graph;;
+				-> rrel_2: rrel_fixed: rrel_scp_var: _begin_vertex;;
+				-> rrel_3: rrel_fixed: rrel_scp_var: _end_vertex;;
+				-> rrel_4: rrel_assign: rrel_scp_var: _route;;
+				-> rrel_5: rrel_assign: rrel_scp_var: _path_length;;
+			*);;
+		-> rrel_3: rrel_assign: rrel_scp_var: _descr1;;
+		=> nrel_goto: ..proc_SrD_wait_after_find_SrD;;
+	*);;
+
+	//Оператор ожидания завершения программы
+	//После этого очистим память и перейдем к нахождению другой конечной вершины
+	-> ..proc_SrD_wait_after_find_SrD (*
+		<- waitReturn;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: _descr1;;
+		=> nrel_goto: ..proc_run_testcase_check;;
+	*);;
+
+		-> ..proc_run_testcase_check (*
+			<- ifVarAssign;;
+			-> rrel_1: rrel_fixed: rrel_scp_var: _route;;
+
+			=> nrel_then: ..proc_adding_length_mes;;
+			=> nrel_else: ..proc_noSrdExist;;
+		*);;
+		
+		-> ..proc_adding_length_mes (*
+		<- printNl;;
+		-> rrel_1: rrel_fixed: rrel_scp_const: [--------Adding length..];; 		
+		=> nrel_goto: ..proc_all_length_temp123;;	
+		*);;
+
+		-> ..proc_all_length_temp123 (*
+			<- varAssign;;
+			-> rrel_1: rrel_assign: rrel_scp_var: _temp123;;
+			-> rrel_2: rrel_fixed: rrel_scp_var: _all_path_length;;
+			=> nrel_goto: ..proc_all_length_add_length;;
+		*);;
+
+		-> ..proc_all_length_add_length (*
+			<- contAdd;;
+			-> rrel_1: rrel_assign: rrel_scp_var: _all_path_length;;
+			-> rrel_2: rrel_fixed: rrel_scp_var: _temp123;;
+			-> rrel_3: rrel_fixed: rrel_scp_var: _path_length;;
+			=> nrel_goto: ..proc_clear_delete_path_length;;
+		*);;
+		
+		
+		-> ..proc_clear_delete_path_length (*
+			<- eraseEl;;
+			-> rrel_1: rrel_fixed: rrel_erase: rrel_scp_var: _path_length;;
+			=> nrel_goto: ..proc_clear_delete_route;;	
+		*);;
+		
+		-> ..proc_clear_delete_route (*
+			<- eraseEl;;
+			-> rrel_1: rrel_fixed: rrel_erase: rrel_scp_var: _route;;
+			=> nrel_goto: ..proc_SrD_find_end_vertex;;	
+		*);;
+		
+	//Удаление множества всех непроверенных вершин
+	//Переход к оператору нахождения следующей конечной вершины
+
+	//--------------------------------------Ветвь else во внешнем цикле----------------------------------------
+
+	//Удаление множества всех начальных вершин
+	-> ..proc_SrD_erase_all_begin_vertices (*
+		<- eraseEl;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: rrel_erase: _all_begin_vertices;;
+		=> nrel_goto: ..proc_SrD_print_counting_vert_mes;; 
+	*);;
+
+		-> ..proc_SrD_print_counting_vert_mes (*
+		<- printNl;;
+		-> rrel_1: rrel_fixed: rrel_scp_const: [--------Counting Vertexes..];; 		
+		=> nrel_goto: ..proc_count_graph_vertexes;;	
+		*);;
+
+	-> ..proc_count_graph_vertexes (*
+		<- call;;
+		-> rrel_1: rrel_fixed: rrel_scp_const: proc_find_number_of_vertexes_modded;;
+		-> rrel_2: rrel_fixed: rrel_scp_const: ... (*
+			//Узел графа
+			-> rrel_1: rrel_fixed: rrel_scp_var: _graph;;
+			//кол-во вершин
+			-> rrel_2: rrel_assign: rrel_scp_var: _number_of_vertexes;;
+		*);;
+		-> rrel_3: rrel_assign: rrel_scp_var: _descr2;;
+		=> nrel_goto: ..proc_SrD_wait_count_vert;;
+	*);;
+
+	-> ..proc_SrD_wait_count_vert (*
+		<- waitReturn;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: _descr2;;
+		=> nrel_goto: ..proc_N_sub;;
+	*);;
+
+	-> ..proc_N_sub (*
+			<- contSub;;
+			-> rrel_1: rrel_assign: rrel_scp_var: _number_of_ways_per_vertex;;
+			-> rrel_2: rrel_fixed: rrel_scp_var: _number_of_vertexes;;
+			-> rrel_3: rrel_fixed: rrel_scp_const: [1];;
+			=> nrel_goto: ..proc_NxN2_mult;;
+		*);;
+
+	-> ..proc_NxN2_mult (*
+			<- contMult;;
+			-> rrel_1: rrel_assign: rrel_scp_var: _N_mult;;
+			-> rrel_2: rrel_fixed: rrel_scp_var: _number_of_ways_per_vertex;;
+			-> rrel_3: rrel_fixed: rrel_scp_var: _number_of_vertexes;;
+			=> nrel_goto: ..proc_Result_div;;
+		*);;
+
+	-> ..proc_Result_div (*
+			<- contDiv;;
+			-> rrel_1: rrel_assign: rrel_scp_var: _Result;;
+			-> rrel_2: rrel_fixed: rrel_scp_var: _all_path_length;;
+			-> rrel_3: rrel_fixed: rrel_scp_var: _N_mult;;
+			=> nrel_goto: ..proc_print_SrD_ending_mes;;
+		*);;
+
+	-> ..proc_print_SrD_ending_mes (*
+			<- printNl;;
+			-> rrel_1: rrel_fixed: rrel_scp_const: [------SredDiam is: ];;
+	
+			=> nrel_goto: ..proc_print_Result;;
+		*);;
+
+	-> ..proc_print_Result (*
+			<- printNl;;
+			-> rrel_1: rrel_fixed: rrel_scp_var: _Result;;
+	
+			=> nrel_goto: ..proc_find_srd_GENCONSTR;;
+		*);;
+		
+	-> ..proc_find_srd_GENCONSTR
+	(*
+	<- genElStr5;;
+		-> rrel_1: rrel_fixed: rrel_scp_const: _graph;;
+		-> rrel_2: rrel_assign: rrel_common: rrel_const: rrel_scp_var: _arc1;;
+		-> rrel_3: rrel_fixed: rrel_scp_var: _Result;;
+		-> rrel_4: rrel_assign : rrel_pos_const_perm : rrel_scp_var : _arc2;;
+		-> rrel_5: rrel_fixed: rrel_scp_const: nrel_sredDiam;;
+
+		=> nrel_goto: ..proc_run_testcase_print_test_finish;; 
+	*);;
+
+
+	//--------------------------------------Конец ветви else во внешнем цикле----------------------------------------
+
+	-> ..proc_noSrdExist (*
+			<- printNl;;
+			-> rrel_1: rrel_fixed: rrel_scp_const: [No path between two vertexes (SrDiam=0)];;
+
+			=> nrel_goto: ..proc_noSrdGenConstr;;
+	*);;
+
+	-> ..proc_noSrdGenConstr (*
+		<- genElStr5;;
+		-> rrel_1: rrel_fixed: rrel_scp_const: _graph;;
+		-> rrel_2: rrel_assign: rrel_common: rrel_const: rrel_scp_var: _arc1;;
+		-> rrel_3: rrel_fixed: rrel_scp_const: [0];;
+		-> rrel_4: rrel_assign : rrel_pos_const_perm : rrel_scp_var : _arc2;;
+		-> rrel_5: rrel_fixed: rrel_scp_const: nrel_sredDiam;;
+
+		=> nrel_goto: ..proc_extr_exit_SrD_erase_all_end_vertices;; 
+	*);;
+	-> ..proc_extr_exit_SrD_erase_all_end_vertices (*
+		<- eraseEl;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: rrel_erase: _all_end_vertices;;
+		=> nrel_goto: ..proc_extr_exit_SrD_erase_all_begin_vertices;;
+	*);;
+	-> ..proc_extr_exit_SrD_erase_all_begin_vertices (*
+		<- eraseEl;;
+		-> rrel_1: rrel_fixed: rrel_scp_var: rrel_erase: _all_begin_vertices;;
+		=> nrel_goto: ..proc_run_testcase_print_test_finish;; 
+	*);;
+
+		
+	-> ..proc_run_testcase_print_test_finish (*
+			<- printNl;;
+			-> rrel_1: rrel_fixed: rrel_scp_const: [---------------Test done!!!];;
+
+			=> nrel_goto: ..proc_SrD_return;;
+	*);;
+		
+	//Оператор return
+	-> ..proc_SrD_return (*
+		<- return;;
+	*);;
+
+	*);;
+*);;	
